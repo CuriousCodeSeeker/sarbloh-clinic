@@ -1,81 +1,98 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
+
+interface DashboardStats {
+  registeredPatients: number;
+  visitsToday: number;
+  visitsThisMonth: number;
+  collectedThisMonth: number;
+  medicinesToReorder: number;
+  followUpsIn7Days: number;
+  todaysAppointments: number;
+  outstanding: number;
+}
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadStats = async () => {
+    try {
+      const response = await api.get('/dashboard/stats');
+      setStats(response.data.data);
+    } catch (err) {
+      console.error('Failed to load dashboard stats', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const formatCurrency = (value: number) =>
+    `₹${value.toLocaleString('en-IN')}`;
+
+  const statCards = [
+    { label: 'Registered Patients', value: stats?.registeredPatients ?? 0, color: 'text-gray-800' },
+    { label: 'Visits Today', value: stats?.visitsToday ?? 0, color: 'text-gray-800' },
+    { label: 'Visits This Month', value: stats?.visitsThisMonth ?? 0, color: 'text-gray-800' },
+    { label: 'Collected This Month', value: formatCurrency(stats?.collectedThisMonth ?? 0), color: 'text-sarbloh-green' },
+    { label: 'Medicines to Reorder', value: stats?.medicinesToReorder ?? 0, color: 'text-sarbloh-red' },
+    { label: 'Follow-ups in 7 Days', value: stats?.followUpsIn7Days ?? 0, color: 'text-gray-800' },
+    { label: "Today's Appointments", value: stats?.todaysAppointments ?? 0, color: 'text-gray-800' },
+    { label: 'Outstanding', value: formatCurrency(stats?.outstanding ?? 0), color: 'text-sarbloh-red' },
+  ];
+
+  const quickActions = [
+    { label: 'Register Patient', color: 'bg-sarbloh-red hover:bg-sarbloh-red-dark', action: () => navigate('/patients/new') },
+    { label: 'Log Visit / Revisit', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
+    { label: 'Search Patient', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
+    { label: 'Add / Update Medicine', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Book Appointment', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Print Prescription', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'View Reports', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Refresh Dashboard', color: 'bg-gray-700 hover:bg-gray-800', action: () => { setLoading(true); loadStats(); } },
+  ];
+
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">Dashboard</h1>
-
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Registered Patients</div>
-          <div className="text-2xl font-bold text-gray-800 mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Visits Today</div>
-          <div className="text-2xl font-bold text-gray-800 mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Visits This Month</div>
-          <div className="text-2xl font-bold text-gray-800 mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Collected This Month</div>
-          <div className="text-2xl font-bold text-sarbloh-green mt-1">₹0</div>
-        </div>
+    <div className="max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
+        <p className="text-sm text-gray-500 mt-1">Overview of clinic and shop operations</p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Medicines to Reorder</div>
-          <div className="text-2xl font-bold text-sarbloh-red mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Follow-ups in 7 Days</div>
-          <div className="text-2xl font-bold text-gray-800 mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Today's Appointments</div>
-          <div className="text-2xl font-bold text-gray-800 mt-1">0</div>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <div className="text-sm text-gray-500">Outstanding</div>
-          <div className="text-2xl font-bold text-sarbloh-red mt-1">₹0</div>
-        </div>
+        {statCards.map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm"
+          >
+            <div className="text-sm text-gray-500 font-medium">{stat.label}</div>
+            <div className={`text-2xl font-bold mt-2 ${stat.color}`}>
+              {loading ? '—' : stat.value}
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Quick actions */}
-      <h2 className="text-lg font-medium text-gray-700 mb-3">Quick Actions</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <button className="py-3 px-4 bg-sarbloh-red text-white rounded font-medium hover:bg-sarbloh-red-dark transition-colors">
-          Register Patient
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          Log Visit / Revisit
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          Search Patient
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          Add / Update Medicine
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          Book Appointment
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          Print Prescription
-        </button>
-        <button className="py-3 px-4 bg-sarbloh-green text-white rounded font-medium hover:bg-sarbloh-green-dark transition-colors">
-          View Reports
-        </button>
-        <button className="py-3 px-4 bg-gray-700 text-white rounded font-medium hover:bg-gray-800 transition-colors">
-          Refresh Dashboard
-        </button>
+      <div>
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {quickActions.map((action) => (
+            <button
+              key={action.label}
+              onClick={action.action}
+              className={`py-3.5 px-4 text-white rounded-xl font-medium text-sm shadow-sm transition-all ${action.color}`}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
       </div>
-
-      <p className="mt-8 text-sm text-gray-500">
-        Phase 1 complete. Dashboard statistics and actions will become live in later phases.
-      </p>
     </div>
   );
 }

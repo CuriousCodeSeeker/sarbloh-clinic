@@ -137,7 +137,6 @@ model Patient {
   visits       Visit[]
   appointments Appointment[]
   sales        Sale[]
-  attachments  Attachment[]
 
   @@index([fullName])
   @@index([patientCode])
@@ -198,7 +197,6 @@ model Visit {
   patient       Patient        @relation(fields: [patientId], references: [id])
   practitioner  User?          @relation("VisitPractitioner", fields: [practitionerId], references: [id])
   prescriptions Prescription[]
-  attachments   Attachment[]
 
   @@index([patientId])
   @@index([visitDate])

@@ -3,6 +3,9 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import PatientsListPage from './pages/patients/PatientsListPage';
+import PatientFormPage from './pages/patients/PatientFormPage';
+import PatientDetailPage from './pages/patients/PatientDetailPage';
 import MainLayout from './layouts/MainLayout';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -34,6 +37,10 @@ export default function App() {
             <MainLayout>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
+                <Route path="/patients" element={<PatientsListPage />} />
+                <Route path="/patients/new" element={<PatientFormPage />} />
+                <Route path="/patients/:id" element={<PatientDetailPage />} />
+                <Route path="/patients/:id/edit" element={<PatientFormPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainLayout>

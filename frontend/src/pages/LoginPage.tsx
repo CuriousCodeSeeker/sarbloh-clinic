@@ -18,74 +18,86 @@ export default function LoginPage() {
     try {
       await login(email, password);
       navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid email or password');
+    } catch {
+      setError('Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-sarbloh-cream">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-md p-8">
-        {/* Logo / Brand */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-sarbloh-red">Sarbloh</h1>
-          <p className="text-sarbloh-green mt-1 text-sm">Ayurvedic Clinic</p>
+    <div className="min-h-screen flex">
+      {/* Left branding panel */}
+      <div className="hidden lg:flex lg:w-[42%] bg-sarbloh-red items-center justify-center">
+        <div className="text-center text-white px-8">
+          <h1 className="text-5xl font-bold tracking-tight">Sarbloh</h1>
+          <p className="text-lg mt-3 text-red-100 font-medium tracking-wide">
+            Ayurvedic Clinic
+          </p>
         </div>
+      </div>
 
-        <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">
-          Sign in to your account
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-sarbloh-green focus:border-transparent"
-              placeholder="admin@sarbloh.com"
-            />
+      {/* Right login form */}
+      <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
+        <div className="w-full max-w-md">
+          {/* Mobile brand */}
+          <div className="lg:hidden text-center mb-10">
+            <h1 className="text-3xl font-bold text-sarbloh-red">Sarbloh</h1>
+            <p className="text-sarbloh-green text-sm mt-1 font-medium">Ayurvedic Clinic</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-sarbloh-green focus:border-transparent"
-              placeholder="••••••••"
-            />
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+            <h2 className="text-xl font-semibold text-gray-900">Sign in</h2>
+            <p className="text-sm text-gray-500 mt-1 mb-6">
+              Enter your credentials to continue
+            </p>
+
+            {error && (
+              <div className="mb-5 px-4 py-3 bg-red-50 border border-red-100 text-red-700 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green focus:border-transparent"
+                  placeholder="Enter your email"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green focus:border-transparent"
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-sarbloh-red text-white font-medium rounded-lg hover:bg-sarbloh-red-dark transition-colors disabled:opacity-60 text-sm"
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
+            </form>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 bg-sarbloh-red text-white font-medium rounded hover:bg-sarbloh-red-dark transition-colors disabled:opacity-60"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-xs text-gray-500">
-          <p>Default accounts (after seed):</p>
-          <p className="mt-1">Admin: admin@sarbloh.com / Admin@123</p>
-          <p>Practitioner: practitioner@sarbloh.com / Pract@123</p>
         </div>
       </div>
     </div>

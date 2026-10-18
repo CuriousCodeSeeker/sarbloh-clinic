@@ -132,11 +132,12 @@ model Patient {
   createdAt         DateTime       @default(now()) @map("created_at")
   updatedAt         DateTime       @updatedAt @map("updated_at")
 
-  contacts     PatientContact[]
-  addresses    PatientAddress[]
-  visits       Visit[]
-  appointments Appointment[]
-  sales        Sale[]
+    contacts      PatientContact[]
+  addresses     PatientAddress[]
+  visits        Visit[]
+  appointments  Appointment[]
+  sales         Sale[]
+  prescriptions Prescription[]
 
   @@index([fullName])
   @@index([patientCode])
@@ -215,7 +216,8 @@ model Prescription {
   createdAt        DateTime  @default(now()) @map("created_at")
   updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  visit        Visit?             @relation(fields: [visitId], references: [id])
+    visit        Visit?             @relation(fields: [visitId], references: [id])
+  patient      Patient            @relation(fields: [patientId], references: [id])
   practitioner User?              @relation("PrescriptionPractitioner", fields: [practitionerId], references: [id])
   items        PrescriptionItem[]
 

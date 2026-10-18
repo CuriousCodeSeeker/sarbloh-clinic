@@ -49,13 +49,12 @@ export default function DashboardPage() {
 
   const quickActions = [
     { label: 'Register Patient', color: 'bg-sarbloh-red hover:bg-sarbloh-red-dark', action: () => navigate('/patients/new') },
-    { label: 'Log Visit / Revisit', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
     { label: 'Search Patient', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
-    { label: 'Add / Update Medicine', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Add / Update Medicine', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/medicines/new') },
     { label: 'Book Appointment', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
     { label: 'Print Prescription', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
     { label: 'View Reports', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
-    { label: 'Refresh Dashboard', color: 'bg-gray-700 hover:bg-gray-800', action: () => { setLoading(true); loadStats(); } },
+    // { label: 'Refresh Dashboard', color: 'bg-gray-700 hover:bg-gray-800', action: () => { setLoading(true); loadStats(); } },
   ];
 
   return (
@@ -81,7 +80,7 @@ export default function DashboardPage() {
 
       <div>
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {quickActions.map((action) => (
             <button
               key={action.label}

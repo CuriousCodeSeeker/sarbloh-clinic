@@ -13,6 +13,12 @@ import MedicinesListPage from './pages/medicines/MedicinesListPage';
 import MedicineFormPage from './pages/medicines/MedicineFormPage';
 import InventoryPage from './pages/inventory/InventoryPage';
 import AdjustStockPage from './pages/inventory/AdjustStockPage';
+import SalesListPage from './pages/sales/SalesListPage';
+import CreateSalePage from './pages/sales/CreateSalePage';
+import SaleDetailPage from './pages/sales/SaleDetailPage';
+import HerbsListPage from './pages/herbs/HerbsListPage';
+import HerbFormPage from './pages/herbs/HerbFormPage';
+import HerbDetailPage from './pages/herbs/HerbDetailPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -55,6 +61,13 @@ export default function App() {
                 <Route path="/medicines/:id/edit" element={<MedicineFormPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
                 <Route path="/inventory/adjust" element={<AdjustStockPage />} />
+                <Route path="/sales" element={<SalesListPage />} />
+                <Route path="/sales/new" element={<CreateSalePage />} />
+                <Route path="/sales/:id" element={<SaleDetailPage />} />
+                <Route path="/herbs" element={<HerbsListPage />} />
+                <Route path="/herbs/new" element={<HerbFormPage />} />
+                <Route path="/herbs/:id" element={<HerbDetailPage />} />
+                <Route path="/herbs/:id/edit" element={<HerbFormPage />} />
               </Routes>
             </MainLayout>
           </ProtectedRoute>

@@ -48,10 +48,10 @@ export default function DashboardPage() {
   ];
 
   const quickActions = [
-    { label: 'Register Patient', color: 'bg-sarbloh-red hover:bg-sarbloh-red-dark', action: () => navigate('/patients/new') },
+    { label: 'Register Patient', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients/new') },
     { label: 'Search Patient', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
     { label: 'Add / Update Medicine', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/medicines/new') },
-    { label: 'Book Appointment', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Book Appointment', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/appointments/new') },
     { label: 'Print Prescription', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
     { label: 'View Reports', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
     // { label: 'Refresh Dashboard', color: 'bg-gray-700 hover:bg-gray-800', action: () => { setLoading(true); loadStats(); } },

@@ -19,6 +19,8 @@ import SaleDetailPage from './pages/sales/SaleDetailPage';
 import HerbsListPage from './pages/herbs/HerbsListPage';
 import HerbFormPage from './pages/herbs/HerbFormPage';
 import HerbDetailPage from './pages/herbs/HerbDetailPage';
+import AppointmentsListPage from './pages/appointments/AppointmentsListPage';
+import BookAppointmentPage from './pages/appointments/BookAppointmentPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -68,6 +70,8 @@ export default function App() {
                 <Route path="/herbs/new" element={<HerbFormPage />} />
                 <Route path="/herbs/:id" element={<HerbDetailPage />} />
                 <Route path="/herbs/:id/edit" element={<HerbFormPage />} />
+                <Route path="/appointments" element={<AppointmentsListPage />} />
+                <Route path="/appointments/new" element={<BookAppointmentPage />} />
               </Routes>
             </MainLayout>
           </ProtectedRoute>

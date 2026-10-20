@@ -36,10 +36,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar */}
       <aside className="w-60 bg-white border-r border-gray-200 flex flex-col shadow-sm">
-        <div className="px-5 py-5 border-b border-gray-100">
-          <h1 className="text-xl font-bold text-sarbloh-red tracking-tight">Sarbloh</h1>
-          <p className="text-xs text-sarbloh-green font-medium mt-0.5">Ayurvedic Clinic</p>
-        </div>
+        <div className="px-5 py-4 border-b border-gray-100">
+  <img
+    src="/sarbloh-logo.jpg"
+    alt="Sarbloh Ayurvedic Clinic"
+    className="h-10 w-auto object-contain"
+  />
+</div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {

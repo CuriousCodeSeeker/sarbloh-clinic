@@ -24,3 +24,26 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print\:shadow-none,
+  .print\:shadow-none * {
+    visibility: visible;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:p-6 {
+    padding: 1.5rem !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

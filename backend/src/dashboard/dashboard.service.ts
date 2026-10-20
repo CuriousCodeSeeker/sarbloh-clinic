@@ -1,9 +1,44 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { InventoryTransactionType } from '@prisma/client';
 
 @Injectable()
 export class DashboardService {
   constructor(private prisma: PrismaService) {}
+
+  private async countMedicinesToReorder(): Promise<number> {
+    const medicines = await this.prisma.medicine.findMany({
+      where: { isActive: true, deletedAt: null },
+      select: { id: true, reorderLevel: true },
+    });
+
+    if (medicines.length === 0) return 0;
+
+    const transactions = await this.prisma.inventoryTransaction.findMany({
+      where: { medicineId: { in: medicines.map((m) => m.id) } },
+      select: { medicineId: true, transactionType: true, quantity: true },
+    });
+
+    const stockMap = new Map<string, number>();
+
+    for (const tx of transactions) {
+      const qty = Number(tx.quantity);
+      const signed =
+        tx.transactionType === InventoryTransactionType.SALE ||
+        tx.transactionType === InventoryTransactionType.DAMAGE ||
+        tx.transactionType === InventoryTransactionType.EXPIRED ||
+        tx.transactionType === InventoryTransactionType.TRANSFER
+          ? -Math.abs(qty)
+          : Math.abs(qty);
+
+      stockMap.set(tx.medicineId, (stockMap.get(tx.medicineId) || 0) + signed);
+    }
+
+    return medicines.filter((m) => {
+      const stock = stockMap.get(m.id) || 0;
+      return stock <= (m.reorderLevel ?? 0);
+    }).length;
+  }
 
   async getStats() {
     const now = new Date();
@@ -22,35 +57,25 @@ export class DashboardService {
       todaysAppointments,
       outstanding,
     ] = await Promise.all([
-      // Registered patients
       this.prisma.patient.count({
         where: { isActive: true, deletedAt: null },
       }),
 
-      // Visits today
       this.prisma.visit.count({
         where: { visitDate: { gte: startOfToday } },
       }),
 
-      // Visits this month
       this.prisma.visit.count({
         where: { visitDate: { gte: startOfMonth } },
       }),
 
-      // Collected this month (sum of payments)
       this.prisma.payment.aggregate({
         where: { paidAt: { gte: startOfMonth } },
         _sum: { amount: true },
       }),
 
-      // Medicines to reorder (stock at or below reorder level)
-      // Note: current stock is calculated from inventory transactions later.
-      // For now we count medicines that have reorderLevel set (placeholder until inventory is live)
-      this.prisma.medicine.count({
-        where: { isActive: true, deletedAt: null },
-      }).then(() => 0), // Will be real after inventory module
+      this.countMedicinesToReorder(),
 
-      // Follow-ups in next 7 days
       this.prisma.visit.count({
         where: {
           followUpDate: {
@@ -60,7 +85,6 @@ export class DashboardService {
         },
       }),
 
-      // Today's appointments
       this.prisma.appointment.count({
         where: {
           appointmentDate: {
@@ -71,7 +95,6 @@ export class DashboardService {
         },
       }),
 
-      // Outstanding amount
       this.prisma.sale.aggregate({
         where: {
           status: 'COMPLETED',
@@ -86,7 +109,7 @@ export class DashboardService {
       visitsToday,
       visitsThisMonth,
       collectedThisMonth: Number(collectedThisMonth._sum.amount || 0),
-      medicinesToReorder: 0, // Real value after inventory module
+      medicinesToReorder,
       followUpsIn7Days,
       todaysAppointments,
       outstanding: Number(outstanding._sum.dueAmount || 0),

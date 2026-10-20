@@ -59,6 +59,14 @@ export async function getSales(params?: {
   return response.data;
 }
 
+export async function recordPayment(
+  saleId: string,
+  data: { amount: number; method: string; notes?: string },
+) {
+  const response = await api.post(`/sales/${saleId}/payments`, data);
+  return response.data.data as Sale;
+}
+
 export async function getSale(id: string) {
   const response = await api.get(`/sales/${id}`);
   return response.data.data as Sale;

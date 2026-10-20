@@ -1,13 +1,13 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import PatientsListPage from './pages/patients/PatientsListPage';
 import PatientFormPage from './pages/patients/PatientFormPage';
 import PatientDetailPage from './pages/patients/PatientDetailPage';
 import LogVisitPage from './pages/visits/LogVisitPage';
-import MainLayout from './layouts/MainLayout';
 import CreatePrescriptionPage from './pages/prescriptions/CreatePrescriptionPage';
 import MedicinesListPage from './pages/medicines/MedicinesListPage';
 import MedicineFormPage from './pages/medicines/MedicineFormPage';
@@ -21,29 +21,51 @@ import HerbFormPage from './pages/herbs/HerbFormPage';
 import HerbDetailPage from './pages/herbs/HerbDetailPage';
 import AppointmentsListPage from './pages/appointments/AppointmentsListPage';
 import BookAppointmentPage from './pages/appointments/BookAppointmentPage';
+import ReportsPage from './pages/reports/ReportsPage';
+import SettingsPage from './pages/settings/SettingsPage';
+import PrintPrescriptionPage from './pages/print/PrintPrescriptionPage';
+import PrintInvoicePage from './pages/print/PrintInvoicePage';
+import MainLayout from './layouts/MainLayout';
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function PublicOnly({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-sarbloh-cream">
-        <div className="text-sarbloh-green">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      {/* Public */}
+      <Route
+        path="/login"
+        element={
+          <PublicOnly>
+            <LoginPage />
+          </PublicOnly>
+        }
+      />
+
+      {/* Print also requires login */}
+      <Route
+        path="/print/prescription/:id"
+        element={
+          <ProtectedRoute>
+            <PrintPrescriptionPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/print/invoice/:id"
+        element={
+          <ProtectedRoute>
+            <PrintInvoicePage />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* All confidential pages */}
       <Route
         path="/*"
         element={
@@ -56,7 +78,6 @@ export default function App() {
                 <Route path="/patients/:id" element={<PatientDetailPage />} />
                 <Route path="/patients/:id/edit" element={<PatientFormPage />} />
                 <Route path="/visits/new" element={<LogVisitPage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
                 <Route path="/prescriptions/new" element={<CreatePrescriptionPage />} />
                 <Route path="/medicines" element={<MedicinesListPage />} />
                 <Route path="/medicines/new" element={<MedicineFormPage />} />
@@ -72,6 +93,9 @@ export default function App() {
                 <Route path="/herbs/:id/edit" element={<HerbFormPage />} />
                 <Route path="/appointments" element={<AppointmentsListPage />} />
                 <Route path="/appointments/new" element={<BookAppointmentPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainLayout>
           </ProtectedRoute>

@@ -182,15 +182,23 @@ export default function PatientDetailPage() {
                 className="border border-gray-100 rounded-lg p-4"
               >
                 <div className="flex items-start justify-between mb-3">
-                  <div className="font-medium text-gray-900">
-                    {formatDate(rx.prescriptionDate)}
-                  </div>
-                  {rx.followUpDate && (
-                    <div className="text-xs text-sarbloh-green bg-green-50 px-2 py-1 rounded">
-                      Follow-up: {formatDate(rx.followUpDate)}
-                    </div>
-                  )}
-                </div>
+  <div className="font-medium text-gray-900">
+    {formatDate(rx.prescriptionDate)}
+  </div>
+  <div className="flex items-center gap-3">
+    {rx.followUpDate && (
+      <div className="text-xs text-sarbloh-green bg-green-50 px-2 py-1 rounded">
+        Follow-up: {formatDate(rx.followUpDate)}
+      </div>
+    )}
+    <button
+      onClick={() => navigate(`/print/prescription/${rx.id}`)}
+      className="text-xs text-sarbloh-green hover:underline font-medium"
+    >
+      Print
+    </button>
+  </div>
+</div>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-gray-500 border-b border-gray-100">

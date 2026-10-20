@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import {
   InventoryTransactionType,
+  PaymentMethod,
   PaymentStatus,
   SaleStatus,
 } from '@prisma/client';
@@ -49,7 +50,6 @@ export class SalesService {
       throw new BadRequestException('At least one item is required');
     }
 
-    // Validate medicines and stock
     for (const item of dto.items) {
       const medicine = await this.prisma.medicine.findFirst({
         where: { id: item.medicineId, deletedAt: null, isActive: true },
@@ -94,7 +94,7 @@ export class SalesService {
 
     const invoiceNumber = await this.generateInvoiceNumber();
 
-    const sale = await this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx) => {
       const created = await tx.sale.create({
         data: {
           invoiceNumber,
@@ -134,7 +134,6 @@ export class SalesService {
         },
       });
 
-      // Record payment if any amount paid
       if (paidAmount > 0 && dto.paymentMethod) {
         await tx.payment.create({
           data: {
@@ -145,7 +144,6 @@ export class SalesService {
         });
       }
 
-      // Reduce inventory for each item
       for (const item of dto.items) {
         await tx.inventoryTransaction.create({
           data: {
@@ -162,15 +160,9 @@ export class SalesService {
 
       return created;
     });
-
-    return sale;
   }
 
-  async findAll(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) {
+  async findAll(params: { page?: number; limit?: number; search?: string }) {
     const page = params.page || 1;
     const limit = params.limit || 20;
     const skip = (page - 1) * limit;
@@ -250,5 +242,75 @@ export class SalesService {
     }
 
     return sale;
+  }
+
+  async recordPayment(
+    id: string,
+    dto: { amount: number; method: PaymentMethod; notes?: string },
+  ) {
+    const sale = await this.prisma.sale.findUnique({ where: { id } });
+
+    if (!sale) {
+      throw new NotFoundException('Sale not found');
+    }
+
+    if (sale.status !== SaleStatus.COMPLETED) {
+      throw new BadRequestException(
+        'Payment can only be recorded on a completed sale',
+      );
+    }
+
+    const due = Number(sale.dueAmount);
+    if (due <= 0) {
+      throw new BadRequestException('This invoice is already fully paid');
+    }
+
+    if (dto.amount > due) {
+      throw new BadRequestException(
+        `Amount cannot be more than due amount (${due})`,
+      );
+    }
+
+    const paidAmount = Number(sale.paidAmount) + dto.amount;
+    const dueAmount = Math.max(Number(sale.total) - paidAmount, 0);
+
+    let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+    if (dueAmount <= 0) {
+      paymentStatus = PaymentStatus.PAID;
+    } else if (paidAmount > 0) {
+      paymentStatus = PaymentStatus.PARTIAL;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.payment.create({
+        data: {
+          saleId: id,
+          amount: dto.amount,
+          method: dto.method,
+          notes: dto.notes,
+        },
+      });
+
+      return tx.sale.update({
+        where: { id },
+        data: {
+          paidAmount,
+          dueAmount,
+          paymentStatus,
+          paymentMethod: dto.method,
+        },
+        include: {
+          patient: {
+            select: { id: true, patientCode: true, fullName: true },
+          },
+          items: {
+            include: {
+              medicine: { select: { id: true, name: true, unit: true } },
+            },
+          },
+          payments: true,
+        },
+      });
+    });
   }
 }

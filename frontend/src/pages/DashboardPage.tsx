@@ -52,8 +52,8 @@ export default function DashboardPage() {
     { label: 'Search Patient', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
     { label: 'Add / Update Medicine', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/medicines/new') },
     { label: 'Book Appointment', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/appointments/new') },
-    { label: 'Print Prescription', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
-    { label: 'View Reports', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => {} },
+    { label: 'Print Prescription', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/patients') },
+    { label: 'View Reports', color: 'bg-sarbloh-green hover:bg-sarbloh-green-dark', action: () => navigate('/reports') },
     // { label: 'Refresh Dashboard', color: 'bg-gray-700 hover:bg-gray-800', action: () => { setLoading(true); loadStats(); } },
   ];
 

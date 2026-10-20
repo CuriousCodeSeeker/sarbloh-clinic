@@ -11,6 +11,7 @@ import {
 import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RecordPaymentDto } from './dto/record-payment.dto';
 
 @Controller('api/v1/sales')
 @UseGuards(JwtAuthGuard)
@@ -22,6 +23,12 @@ export class SalesController {
     const sale = await this.salesService.create(dto, req.user?.id);
     return { success: true, data: sale };
   }
+
+  @Post(':id/payments')
+async recordPayment(@Param('id') id: string, @Body() dto: RecordPaymentDto) {
+  const sale = await this.salesService.recordPayment(id, dto);
+  return { success: true, data: sale };
+}
 
   @Get()
   async findAll(

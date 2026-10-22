@@ -27,8 +27,20 @@ export class HerbsService {
               })),
             }
           : undefined,
+        diseaseCategories: dto.diseaseCategoryIds?.length
+          ? {
+              create: dto.diseaseCategoryIds.map((id) => ({
+                diseaseCategoryId: id,
+              })),
+            }
+          : undefined,
       },
-      include: { names: true },
+      include: {
+        names: true,
+        diseaseCategories: {
+          include: { diseaseCategory: true },
+        },
+      },
     });
   }
 
@@ -48,7 +60,20 @@ export class HerbsService {
       where.OR = [
         { botanicalName: { contains: term, mode: 'insensitive' } },
         { commonName: { contains: term, mode: 'insensitive' } },
-        { names: { some: { name: { contains: term, mode: 'insensitive' } } } },
+        {
+          names: {
+            some: { name: { contains: term, mode: 'insensitive' } },
+          },
+        },
+        {
+          diseaseCategories: {
+            some: {
+              diseaseCategory: {
+                name: { contains: term, mode: 'insensitive' },
+              },
+            },
+          },
+        },
       ];
     }
 
@@ -58,7 +83,12 @@ export class HerbsService {
         skip,
         take: limit,
         orderBy: { commonName: 'asc' },
-        include: { names: true },
+        include: {
+          names: true,
+          diseaseCategories: {
+            include: { diseaseCategory: true },
+          },
+        },
       }),
       this.prisma.herb.count({ where }),
     ]);
@@ -77,7 +107,12 @@ export class HerbsService {
   async findOne(id: string) {
     const herb = await this.prisma.herb.findFirst({
       where: { id, isActive: true },
-      include: { names: true },
+      include: {
+        names: true,
+        diseaseCategories: {
+          include: { diseaseCategory: true },
+        },
+      },
     });
 
     if (!herb) {
@@ -90,9 +125,14 @@ export class HerbsService {
   async update(id: string, dto: UpdateHerbDto) {
     await this.findOne(id);
 
-    // Replace names if provided
     if (dto.names) {
       await this.prisma.herbName.deleteMany({ where: { herbId: id } });
+    }
+
+    if (dto.diseaseCategoryIds) {
+      await this.prisma.herbDiseaseCategory.deleteMany({
+        where: { herbId: id },
+      });
     }
 
     return this.prisma.herb.update({
@@ -115,8 +155,20 @@ export class HerbsService {
               })),
             }
           : undefined,
+        diseaseCategories: dto.diseaseCategoryIds?.length
+          ? {
+              create: dto.diseaseCategoryIds.map((catId) => ({
+                diseaseCategoryId: catId,
+              })),
+            }
+          : undefined,
       },
-      include: { names: true },
+      include: {
+        names: true,
+        diseaseCategories: {
+          include: { diseaseCategory: true },
+        },
+      },
     });
   }
 

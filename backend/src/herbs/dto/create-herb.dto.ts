@@ -4,6 +4,7 @@ import {
   IsArray,
   ValidateNested,
   IsNotEmpty,
+  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -59,4 +60,9 @@ export class CreateHerbDto {
   @ValidateNested({ each: true })
   @Type(() => HerbNameDto)
   names?: HerbNameDto[];
+
+    @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  diseaseCategoryIds?: string[];
 }

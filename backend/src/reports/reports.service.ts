@@ -16,7 +16,11 @@ export class ReportsService {
     const end = toDate ? new Date(toDate) : new Date(now);
     end.setHours(23, 59, 59, 999);
 
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
 
     const [
       patientsTotal,
@@ -91,6 +95,8 @@ export class ReportsService {
 
     const stockMap = new Map<string, number>();
     for (const tx of transactions) {
+      if (!tx.medicineId) continue;
+
       const qty = Number(tx.quantity);
       const signed =
         tx.transactionType === InventoryTransactionType.SALE ||
@@ -99,6 +105,7 @@ export class ReportsService {
         tx.transactionType === InventoryTransactionType.TRANSFER
           ? -Math.abs(qty)
           : Math.abs(qty);
+
       stockMap.set(tx.medicineId, (stockMap.get(tx.medicineId) || 0) + signed);
     }
 
@@ -168,6 +175,8 @@ export class ReportsService {
 
     const stockMap = new Map<string, number>();
     for (const tx of transactions) {
+      if (!tx.medicineId) continue;
+
       const qty = Number(tx.quantity);
       const signed =
         tx.transactionType === InventoryTransactionType.SALE ||
@@ -176,6 +185,7 @@ export class ReportsService {
         tx.transactionType === InventoryTransactionType.TRANSFER
           ? -Math.abs(qty)
           : Math.abs(qty);
+
       stockMap.set(tx.medicineId, (stockMap.get(tx.medicineId) || 0) + signed);
     }
 

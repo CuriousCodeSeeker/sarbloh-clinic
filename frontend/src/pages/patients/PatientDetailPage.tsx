@@ -6,6 +6,13 @@ import {
   getPrescriptionsByPatient,
   Prescription,
 } from '../../services/prescriptions';
+import {
+  getPatientReports,
+  uploadPatientReport,
+  deletePatientReport,
+  getReportDownloadUrl,
+  PatientReport,
+} from '../../services/files';
 
 export default function PatientDetailPage() {
   const { id } = useParams();
@@ -15,6 +22,43 @@ export default function PatientDetailPage() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reports, setReports] = useState<PatientReport[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [reportError, setReportError] = useState('');
+
+  const handleUploadReport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file || !id) return;
+
+  setUploading(true);
+  setReportError('');
+  try {
+    await uploadPatientReport(id, file);
+    const list = await getPatientReports(id);
+    setReports(list);
+  } catch (err: any) {
+    setReportError(err.response?.data?.message || 'Upload failed');
+  } finally {
+    setUploading(false);
+    e.target.value = '';
+  }
+};
+
+const handleDeleteReport = async (reportId: string) => {
+  if (!confirm('Delete this report?')) return;
+  try {
+    await deletePatientReport(reportId);
+    setReports((prev) => prev.filter((r) => r.id !== reportId));
+  } catch {
+    setReportError('Failed to delete report');
+  }
+};
+
+const formatSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
   useEffect(() => {
     if (!id) return;
@@ -32,6 +76,15 @@ export default function PatientDetailPage() {
       .catch(() => setError('Patient not found'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+  if (!id) return;
+  getPatientReports(id)
+    .then(setReports)
+    .catch(() => setReports([]));
+}, [id]);
+
+
 
   if (loading) {
     return <div className="text-center py-12 text-gray-400">Loading...</div>;
@@ -243,6 +296,79 @@ export default function PatientDetailPage() {
           </div>
         )}
       </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mt-6">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-lg font-medium text-gray-800">Lab Reports</h2>
+    <label className="px-4 py-2 bg-sarbloh-green text-white text-sm font-medium rounded-lg cursor-pointer hover:bg-sarbloh-green-dark">
+      {uploading ? 'Uploading...' : '+ Upload Report'}
+      <input
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+        className="hidden"
+        disabled={uploading}
+        onChange={handleUploadReport}
+      />
+    </label>
+  </div>
+
+  {reportError && (
+    <div className="mb-3 p-2 bg-red-50 text-red-700 text-sm rounded">
+      {reportError}
+    </div>
+  )}
+
+  {reports.length === 0 ? (
+    <p className="text-sm text-gray-400">No lab reports uploaded yet</p>
+  ) : (
+    <ul className="divide-y divide-gray-100">
+      {reports.map((r) => (
+        <li
+          key={r.id}
+          className="py-3 flex items-center justify-between gap-3 text-sm"
+        >
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 truncate">
+              {r.originalName}
+            </div>
+            <div className="text-gray-500 text-xs mt-0.5">
+              {formatSize(r.size)} ·{' '}
+              {new Date(r.createdAt).toLocaleDateString('en-IN')}
+            </div>
+          </div>
+          <div className="flex gap-3 shrink-0">
+            <a
+              href={getReportDownloadUrl(r.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sarbloh-green hover:underline font-medium"
+              onClick={(e) => {
+                e.preventDefault();
+                const token = localStorage.getItem('token');
+                fetch(getReportDownloadUrl(r.id), {
+                  headers: { Authorization: `Bearer ${token}` },
+                })
+                  .then((res) => res.blob())
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    window.open(url, '_blank');
+                  });
+              }}
+            >
+              View
+            </a>
+            <button
+              onClick={() => handleDeleteReport(r.id)}
+              className="text-red-600 hover:underline font-medium"
+            >
+              Delete
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
       {/* Visit History */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">

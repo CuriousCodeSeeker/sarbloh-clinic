@@ -11,43 +11,29 @@ import { InventoryTransactionType } from '@prisma/client';
 export class InventoryService {
   constructor(private prisma: PrismaService) {}
 
-  private signedQuantity(
-    type: InventoryTransactionType,
-    quantity: number,
-  ): number {
-    const inflow = [
-      InventoryTransactionType.PURCHASE,
-      InventoryTransactionType.RETURN,
-      InventoryTransactionType.ADJUSTMENT,
-    ];
-    // ADJUSTMENT can be in or out; for simple stock-in we treat positive as in.
-    // For stock-out use SALE, DAMAGE, EXPIRED, TRANSFER.
-    if (
+  private isOutflow(type: InventoryTransactionType): boolean {
+    return (
       type === InventoryTransactionType.SALE ||
       type === InventoryTransactionType.DAMAGE ||
       type === InventoryTransactionType.EXPIRED ||
       type === InventoryTransactionType.TRANSFER
-    ) {
-      return -Math.abs(quantity);
-    }
-    return Math.abs(quantity);
+    );
   }
 
-  async getStockLevels(params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-  }) {
-    const page = params.page || 1;
-    const limit = params.limit || 20;
-    const skip = (page - 1) * limit;
+  private calcStock(
+    transactions: { transactionType: InventoryTransactionType; quantity: any }[],
+  ): number {
+    return transactions.reduce((sum, tx) => {
+      const qty = Number(tx.quantity);
+      return this.isOutflow(tx.transactionType)
+        ? sum - Math.abs(qty)
+        : sum + Math.abs(qty);
+    }, 0);
+  }
 
-    const where: any = {
-      deletedAt: null,
-      isActive: true,
-    };
-
-    if (params.search) {
+  async getMedicineStockLevels(params?: { search?: string }) {
+    const where: any = { isActive: true, deletedAt: null };
+    if (params?.search) {
       const term = params.search.trim();
       where.OR = [
         { name: { contains: term, mode: 'insensitive' } },
@@ -56,29 +42,25 @@ export class InventoryService {
       ];
     }
 
-    const [medicines, total] = await Promise.all([
-      this.prisma.medicine.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { name: 'asc' },
-        select: {
-          id: true,
-          name: true,
-          brand: true,
-          unit: true,
-          sku: true,
-          reorderLevel: true,
-          sellingPrice: true,
-        },
-      }),
-      this.prisma.medicine.count({ where }),
-    ]);
+    const medicines = await this.prisma.medicine.findMany({
+      where,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        brand: true,
+        unit: true,
+        sku: true,
+        reorderLevel: true,
+      },
+    });
 
-    const medicineIds = medicines.map((m) => m.id);
+    if (medicines.length === 0) return [];
 
     const transactions = await this.prisma.inventoryTransaction.findMany({
-      where: { medicineId: { in: medicineIds } },
+      where: {
+        medicineId: { in: medicines.map((m) => m.id) },
+      },
       select: {
         medicineId: true,
         transactionType: true,
@@ -86,132 +68,187 @@ export class InventoryService {
       },
     });
 
-    const stockMap = new Map<string, number>();
-
+    const byMed = new Map<string, typeof transactions>();
     for (const tx of transactions) {
-      const qty = this.signedQuantity(
-        tx.transactionType,
-        Number(tx.quantity),
-      );
-      stockMap.set(tx.medicineId, (stockMap.get(tx.medicineId) || 0) + qty);
+      if (!tx.medicineId) continue;
+      const list = byMed.get(tx.medicineId) || [];
+      list.push(tx);
+      byMed.set(tx.medicineId, list);
     }
 
-    const data = medicines.map((med) => {
-      const currentStock = stockMap.get(med.id) || 0;
+    return medicines.map((m) => {
+      const currentStock = this.calcStock(byMed.get(m.id) || []);
       return {
-        ...med,
+        id: m.id,
+        type: 'MEDICINE' as const,
+        name: m.name,
+        brand: m.brand,
+        unit: m.unit,
+        sku: m.sku,
+        reorderLevel: m.reorderLevel,
         currentStock,
-        needsReorder: currentStock <= (med.reorderLevel || 0),
+        needsReorder: currentStock <= (m.reorderLevel ?? 0),
       };
     });
+  }
 
-    return {
-      data,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+  async getHerbStockLevels(params?: { search?: string }) {
+    const where: any = { isActive: true };
+    if (params?.search) {
+      const term = params.search.trim();
+      where.OR = [
+        { commonName: { contains: term, mode: 'insensitive' } },
+        { botanicalName: { contains: term, mode: 'insensitive' } },
+        {
+          names: {
+            some: { name: { contains: term, mode: 'insensitive' } },
+          },
+        },
+      ];
+    }
+
+    const herbs = await this.prisma.herb.findMany({
+      where,
+      orderBy: { commonName: 'asc' },
+      select: {
+        id: true,
+        commonName: true,
+        botanicalName: true,
+        names: true,
       },
-    };
+    });
+
+    if (herbs.length === 0) return [];
+
+    const transactions = await this.prisma.inventoryTransaction.findMany({
+      where: { herbId: { in: herbs.map((h) => h.id) } },
+      select: {
+        herbId: true,
+        transactionType: true,
+        quantity: true,
+      },
+    });
+
+    const byHerb = new Map<string, typeof transactions>();
+    for (const tx of transactions) {
+      if (!tx.herbId) continue;
+      const list = byHerb.get(tx.herbId) || [];
+      list.push(tx);
+      byHerb.set(tx.herbId, list);
+    }
+
+    return herbs.map((h) => {
+      const currentStock = this.calcStock(byHerb.get(h.id) || []);
+      const enName = h.names?.find((n) => n.languageCode === 'en')?.name;
+      return {
+        id: h.id,
+        type: 'HERB' as const,
+        name: enName || h.commonName || h.botanicalName || 'Herb',
+        brand: null,
+        unit: null,
+        sku: null,
+        reorderLevel: 0,
+        currentStock,
+        needsReorder: currentStock <= 0,
+      };
+    });
   }
 
   async adjustStock(dto: AdjustStockDto, userId?: string) {
-    const medicine = await this.prisma.medicine.findFirst({
-      where: { id: dto.medicineId, deletedAt: null, isActive: true },
-    });
-
-    if (!medicine) {
-      throw new NotFoundException('Medicine not found');
+    if (!dto.medicineId && !dto.herbId) {
+      throw new BadRequestException('Select a medicine or a herb');
+    }
+    if (dto.medicineId && dto.herbId) {
+      throw new BadRequestException('Choose either medicine or herb, not both');
     }
 
-    if (dto.quantity <= 0) {
-      throw new BadRequestException('Quantity must be greater than 0');
+    if (dto.medicineId) {
+      const medicine = await this.prisma.medicine.findFirst({
+        where: { id: dto.medicineId, deletedAt: null, isActive: true },
+      });
+      if (!medicine) throw new NotFoundException('Medicine not found');
+
+      if (this.isOutflow(dto.transactionType)) {
+        const txs = await this.prisma.inventoryTransaction.findMany({
+          where: { medicineId: dto.medicineId },
+          select: { transactionType: true, quantity: true },
+        });
+        const stock = this.calcStock(txs);
+        if (stock < dto.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock. Available: ${stock}`,
+          );
+        }
+      }
     }
 
-    // Prevent negative stock on outflow
-        const isOutflow =
-      dto.transactionType === InventoryTransactionType.SALE ||
-      dto.transactionType === InventoryTransactionType.DAMAGE ||
-      dto.transactionType === InventoryTransactionType.EXPIRED ||
-      dto.transactionType === InventoryTransactionType.TRANSFER;
+    if (dto.herbId) {
+      const herb = await this.prisma.herb.findFirst({
+        where: { id: dto.herbId, isActive: true },
+      });
+      if (!herb) throw new NotFoundException('Herb not found');
 
-    if (isOutflow) {
-      const current = await this.getCurrentStock(dto.medicineId);
-      if (current < dto.quantity) {
-        throw new BadRequestException(
-          `Insufficient stock. Available: ${current}`,
-        );
+      if (this.isOutflow(dto.transactionType)) {
+        const txs = await this.prisma.inventoryTransaction.findMany({
+          where: { herbId: dto.herbId },
+          select: { transactionType: true, quantity: true },
+        });
+        const stock = this.calcStock(txs);
+        if (stock < dto.quantity) {
+          throw new BadRequestException(
+            `Insufficient stock. Available: ${stock}`,
+          );
+        }
       }
     }
 
     return this.prisma.inventoryTransaction.create({
       data: {
-        medicineId: dto.medicineId,
+        medicineId: dto.medicineId || null,
+        herbId: dto.herbId || null,
         transactionType: dto.transactionType,
         quantity: dto.quantity,
         notes: dto.notes,
         createdById: userId || null,
       },
       include: {
-        medicine: {
-          select: { id: true, name: true, unit: true },
+        medicine: { select: { id: true, name: true } },
+        herb: {
+          select: {
+            id: true,
+            commonName: true,
+            botanicalName: true,
+            names: true,
+          },
         },
       },
     });
   }
 
-  async getCurrentStock(medicineId: string): Promise<number> {
-    const transactions = await this.prisma.inventoryTransaction.findMany({
-      where: { medicineId },
-      select: { transactionType: true, quantity: true },
-    });
-
-    return transactions.reduce((sum, tx) => {
-      return sum + this.signedQuantity(tx.transactionType, Number(tx.quantity));
-    }, 0);
-  }
-
-  async getTransactions(params: {
-    page?: number;
-    limit?: number;
+  async getTransactions(params?: {
     medicineId?: string;
+    herbId?: string;
+    limit?: number;
   }) {
-    const page = params.page || 1;
-    const limit = params.limit || 30;
-    const skip = (page - 1) * limit;
-
     const where: any = {};
-    if (params.medicineId) {
-      where.medicineId = params.medicineId;
-    }
+    if (params?.medicineId) where.medicineId = params.medicineId;
+    if (params?.herbId) where.herbId = params.herbId;
 
-    const [data, total] = await Promise.all([
-      this.prisma.inventoryTransaction.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          medicine: {
-            select: { id: true, name: true, unit: true },
-          },
-          createdBy: {
-            select: { id: true, fullName: true },
+    return this.prisma.inventoryTransaction.findMany({
+      where,
+      take: params?.limit || 50,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        medicine: { select: { id: true, name: true } },
+        herb: {
+          select: {
+            id: true,
+            commonName: true,
+            botanicalName: true,
+            names: true,
           },
         },
-      }),
-      this.prisma.inventoryTransaction.count({ where }),
-    ]);
-
-    return {
-      data,
-      meta: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
       },
-    };
+    });
   }
 }

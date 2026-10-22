@@ -17,36 +17,34 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get('stock')
-  async getStockLevels(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-  ) {
-    const result = await this.inventoryService.getStockLevels({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
-      search,
-    });
-    return { success: true, ...result };
+  async getStock(@Query('search') search?: string) {
+    const data = await this.inventoryService.getMedicineStockLevels({ search });
+    return { success: true, data };
+  }
+
+  @Get('herbs/stock')
+  async getHerbStock(@Query('search') search?: string) {
+    const data = await this.inventoryService.getHerbStockLevels({ search });
+    return { success: true, data };
   }
 
   @Post('adjust')
-  async adjustStock(@Body() dto: AdjustStockDto, @Request() req: any) {
-    const tx = await this.inventoryService.adjustStock(dto, req.user?.id);
-    return { success: true, data: tx };
+  async adjust(@Body() dto: AdjustStockDto, @Request() req: any) {
+    const data = await this.inventoryService.adjustStock(dto, req.user?.id);
+    return { success: true, data };
   }
 
   @Get('transactions')
-  async getTransactions(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
+  async transactions(
     @Query('medicineId') medicineId?: string,
+    @Query('herbId') herbId?: string,
+    @Query('limit') limit?: string,
   ) {
-    const result = await this.inventoryService.getTransactions({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 30,
+    const data = await this.inventoryService.getTransactions({
       medicineId,
+      herbId,
+      limit: limit ? parseInt(limit, 10) : 50,
     });
-    return { success: true, ...result };
+    return { success: true, data };
   }
 }

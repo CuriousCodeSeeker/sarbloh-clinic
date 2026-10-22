@@ -22,6 +22,8 @@ export class DashboardService {
     const stockMap = new Map<string, number>();
 
     for (const tx of transactions) {
+      if (!tx.medicineId) continue;
+
       const qty = Number(tx.quantity);
       const signed =
         tx.transactionType === InventoryTransactionType.SALE ||
@@ -42,7 +44,11 @@ export class DashboardService {
 
   async getStats() {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const in7Days = new Date(now);
     in7Days.setDate(in7Days.getDate() + 7);

@@ -14,6 +14,8 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { UsersModule } from './users/users.module';
+import { FilesModule } from './files/files.module';
+import { DiseaseCategoriesModule } from './disease-categories/disease-categories.module';
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { UsersModule } from './users/users.module';
     ReportsModule,
     SettingsModule,
     UsersModule,
+    FilesModule,
+    DiseaseCategoriesModule,
   ],
 })
 export class AppModule {}

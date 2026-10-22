@@ -1,18 +1,22 @@
 import {
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  IsUUID,
-  IsNumber,
   IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { InventoryTransactionType } from '@prisma/client';
 
 export class AdjustStockDto {
+  @ValidateIf((o) => !o.herbId)
   @IsUUID()
-  @IsNotEmpty()
-  medicineId!: string;
+  medicineId?: string;
+
+  @ValidateIf((o) => !o.medicineId)
+  @IsUUID()
+  herbId?: string;
 
   @IsEnum(InventoryTransactionType)
   transactionType!: InventoryTransactionType;

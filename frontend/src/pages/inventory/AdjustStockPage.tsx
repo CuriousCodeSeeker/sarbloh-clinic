@@ -5,28 +5,60 @@ import { getMedicines, Medicine } from '../../services/medicines';
 
 export default function AdjustStockPage() {
   const navigate = useNavigate();
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState<Medicine[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<Medicine | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   const [form, setForm] = useState({
-    medicineId: '',
     transactionType: 'PURCHASE',
     quantity: '',
     notes: '',
   });
 
   useEffect(() => {
-    getMedicines({ limit: 100 })
-      .then((result) => setMedicines(result.data || []))
-      .catch(() => setError('Failed to load medicines'))
-      .finally(() => setLoading(false));
-  }, []);
+    if (!search.trim() || selected) {
+      setResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const result = await getMedicines({
+          search: search.trim(),
+          limit: 15,
+        });
+        setResults(result.data || []);
+      } catch {
+        setResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search, selected]);
+
+  const handleSelect = (med: Medicine) => {
+    setSelected(med);
+    setSearch(med.name);
+    setResults([]);
+  };
+
+  const clearSelection = () => {
+    setSelected(null);
+    setSearch('');
+    setResults([]);
+  };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
@@ -36,8 +68,8 @@ export default function AdjustStockPage() {
     setError('');
     setSuccess('');
 
-    if (!form.medicineId) {
-      setError('Select a medicine');
+    if (!selected) {
+      setError('Search and select a medicine');
       return;
     }
 
@@ -50,12 +82,12 @@ export default function AdjustStockPage() {
     setSaving(true);
     try {
       await adjustStock({
-        medicineId: form.medicineId,
+        medicineId: selected.id,
         transactionType: form.transactionType,
         quantity: qty,
         notes: form.notes.trim() || undefined,
       });
-      setSuccess('Stock updated successfully');
+      setSuccess(`Stock updated for ${selected.name}`);
       setForm((prev) => ({ ...prev, quantity: '', notes: '' }));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to adjust stock');
@@ -63,10 +95,6 @@ export default function AdjustStockPage() {
       setSaving(false);
     }
   };
-
-  if (loading) {
-    return <div className="text-center py-12 text-gray-400">Loading...</div>;
-  }
 
   return (
     <div className="max-w-xl mx-auto">
@@ -81,7 +109,7 @@ export default function AdjustStockPage() {
           Adjust Stock
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Add stock (purchase) or reduce stock (sale, damage, expired)
+          Search medicine, then add or reduce stock
         </p>
       </div>
 
@@ -101,25 +129,73 @@ export default function AdjustStockPage() {
         onSubmit={handleSubmit}
         className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5"
       >
-        <div>
+        {/* Medicine search */}
+        <div className="relative">
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Medicine <span className="text-red-500">*</span>
           </label>
-          <select
-            name="medicineId"
-            value={form.medicineId}
-            onChange={handleChange}
-            required
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-          >
-            <option value="">Select medicine</option>
-            {medicines.map((med) => (
-              <option key={med.id} value={med.id}>
-                {med.name}
-                {med.brand ? ` (${med.brand})` : ''}
-              </option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSelected(null);
+                setSuccess('');
+              }}
+              placeholder="Type medicine name, brand or SKU..."
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
+              autoComplete="off"
+            />
+            {selected && (
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="px-3 py-2.5 border border-gray-300 text-sm rounded-lg hover:bg-gray-50"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {selected && (
+            <p className="mt-2 text-sm text-sarbloh-green font-medium">
+              Selected: {selected.name}
+              {selected.brand ? ` (${selected.brand})` : ''}
+              {selected.unit ? ` · ${selected.unit}` : ''}
+            </p>
+          )}
+
+          {!selected && search.trim() && (
+            <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {searching ? (
+                <div className="px-4 py-3 text-sm text-gray-400">Searching...</div>
+              ) : results.length === 0 ? (
+                <div className="px-4 py-3 text-sm text-gray-400">
+                  No medicines found
+                </div>
+              ) : (
+                results.map((med) => (
+                  <button
+                    key={med.id}
+                    type="button"
+                    onClick={() => handleSelect(med)}
+                    className="w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0"
+                  >
+                    <span className="font-medium text-gray-900">{med.name}</span>
+                    {med.brand && (
+                      <span className="text-gray-500"> · {med.brand}</span>
+                    )}
+                    {med.sku && (
+                      <span className="text-gray-400 text-xs ml-2">
+                        SKU: {med.sku}
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         <div>
@@ -173,7 +249,7 @@ export default function AdjustStockPage() {
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || !selected}
             className="px-5 py-2.5 bg-sarbloh-red text-white text-sm font-medium rounded-lg hover:bg-sarbloh-red-dark transition-colors disabled:opacity-60"
           >
             {saving ? 'Saving...' : 'Update Stock'}

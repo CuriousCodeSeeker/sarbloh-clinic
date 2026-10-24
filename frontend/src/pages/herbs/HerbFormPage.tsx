@@ -1,107 +1,133 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { createHerb, getHerb, updateHerb } from '../../services/herbs';
 import {
-  createHerb,
-  getHerb,
-  updateHerb,
-  CreateHerbData,
-} from '../../services/herbs';
+  createDiseaseCategory,
+  getDiseaseCategories,
+  DiseaseCategory,
+} from '../../services/diseaseCategories';
 
 export default function HerbFormPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const [form, setForm] = useState({
-    botanicalName: '',
-    commonName: '',
-    nameEn: '',
-    nameHi: '',
-    namePa: '',
-    description: '',
-    benefits: '',
-    uses: '',
-    partsUsed: '',
-    preparation: '',
-    dosage: '',
-    contraindications: '',
-  });
+  const [english, setEnglish] = useState('');
+  const [hindi, setHindi] = useState('');
+  const [punjabi, setPunjabi] = useState('');
+  const [botanicalName, setBotanicalName] = useState('');
+  const [commonName, setCommonName] = useState('');
+  const [description, setDescription] = useState('');
+  const [benefits, setBenefits] = useState('');
+  const [uses, setUses] = useState('');
+  const [partsUsed, setPartsUsed] = useState('');
+  const [preparation, setPreparation] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [contraindications, setContraindications] = useState('');
+
+  const [categories, setCategories] = useState<DiseaseCategory[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [newCategory, setNewCategory] = useState('');
+  const [addingCategory, setAddingCategory] = useState(false);
 
   useEffect(() => {
-    if (isEdit && id) {
-      setLoading(true);
-      getHerb(id)
-        .then((herb) => {
-          const nameEn =
-            herb.names?.find((n) => n.languageCode === 'en')?.name || '';
-          const nameHi =
-            herb.names?.find((n) => n.languageCode === 'hi')?.name || '';
-          const namePa =
-            herb.names?.find((n) => n.languageCode === 'pa')?.name || '';
-          setForm({
-            botanicalName: herb.botanicalName || '',
-            commonName: herb.commonName || '',
-            nameEn,
-            nameHi,
-            namePa,
-            description: herb.description || '',
-            benefits: herb.benefits || '',
-            uses: herb.uses || '',
-            partsUsed: herb.partsUsed || '',
-            preparation: herb.preparation || '',
-            dosage: herb.dosage || '',
-            contraindications: herb.contraindications || '',
-          });
-        })
-        .catch(() => setError('Failed to load herb'))
-        .finally(() => setLoading(false));
-    }
-  }, [id, isEdit]);
+    getDiseaseCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  useEffect(() => {
+    if (!id) return;
+    getHerb(id)
+      .then((herb) => {
+        setEnglish(herb.names?.find((n) => n.languageCode === 'en')?.name || '');
+        setHindi(herb.names?.find((n) => n.languageCode === 'hi')?.name || '');
+        setPunjabi(herb.names?.find((n) => n.languageCode === 'pa')?.name || '');
+        setBotanicalName(herb.botanicalName || '');
+        setCommonName(herb.commonName || '');
+        setDescription(herb.description || '');
+        setBenefits(herb.benefits || '');
+        setUses(herb.uses || '');
+        setPartsUsed(herb.partsUsed || '');
+        setPreparation(herb.preparation || '');
+        setDosage(herb.dosage || '');
+        setContraindications(herb.contraindications || '');
+        setSelectedIds(
+          herb.diseaseCategories?.map((d) => d.diseaseCategory.id) || [],
+        );
+      })
+      .catch(() => setError('Herb not found'))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const toggleCategory = (categoryId: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(categoryId)
+        ? prev.filter((x) => x !== categoryId)
+        : [...prev, categoryId],
+    );
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategory.trim();
+    if (!name) return;
+    setAddingCategory(true);
+    setError('');
+    try {
+      const created = await createDiseaseCategory({ name });
+      setCategories((prev) =>
+        [...prev, created].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setSelectedIds((prev) => [...prev, created.id]);
+      setNewCategory('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Could not add category');
+    } finally {
+      setAddingCategory(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    const names = [
+      english.trim() ? { languageCode: 'en', name: english.trim() } : null,
+      hindi.trim() ? { languageCode: 'hi', name: hindi.trim() } : null,
+      punjabi.trim() ? { languageCode: 'pa', name: punjabi.trim() } : null,
+    ].filter(Boolean);
+
+    if (names.length === 0 && !commonName.trim() && !botanicalName.trim()) {
+      setError('Enter at least one name');
+      return;
+    }
+
+    const payload = {
+      botanicalName: botanicalName.trim() || undefined,
+      commonName: commonName.trim() || english.trim() || undefined,
+      description: description.trim() || undefined,
+      benefits: benefits.trim() || undefined,
+      uses: uses.trim() || undefined,
+      partsUsed: partsUsed.trim() || undefined,
+      preparation: preparation.trim() || undefined,
+      dosage: dosage.trim() || undefined,
+      contraindications: contraindications.trim() || undefined,
+      names,
+      diseaseCategoryIds: selectedIds,
+    };
+
     setSaving(true);
-
     try {
-      const names: { languageCode: string; name: string }[] = [];
-      if (form.nameEn.trim())
-        names.push({ languageCode: 'en', name: form.nameEn.trim() });
-      if (form.nameHi.trim())
-        names.push({ languageCode: 'hi', name: form.nameHi.trim() });
-      if (form.namePa.trim())
-        names.push({ languageCode: 'pa', name: form.namePa.trim() });
-
-      const payload: CreateHerbData = {
-        botanicalName: form.botanicalName.trim() || undefined,
-        commonName:
-          form.commonName.trim() || form.nameEn.trim() || undefined,
-        description: form.description.trim() || undefined,
-        benefits: form.benefits.trim() || undefined,
-        uses: form.uses.trim() || undefined,
-        partsUsed: form.partsUsed.trim() || undefined,
-        preparation: form.preparation.trim() || undefined,
-        dosage: form.dosage.trim() || undefined,
-        contraindications: form.contraindications.trim() || undefined,
-        names: names.length ? names : undefined,
-      };
-
       if (isEdit && id) {
-        await updateHerb(id, payload);
+        await updateHerb(id, payload as any);
         navigate(`/herbs/${id}`);
       } else {
-        const herb = await createHerb(payload);
-        navigate(`/herbs/${herb.id}`);
+        const created = await createHerb(payload as any);
+        navigate(`/herbs/${created.id}`);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save herb');
@@ -117,12 +143,17 @@ export default function HerbFormPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <button
+          type="button"
+          onClick={() => navigate('/herbs')}
+          className="text-sm text-sarbloh-green hover:underline"
+        >
+          ← Back to Herbs
+        </button>
+        <h1 className="text-2xl font-semibold text-gray-900 mt-2">
           {isEdit ? 'Edit Herb' : 'Add Herb'}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Multilingual herb entry
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Multilingual herb entry</p>
       </div>
 
       {error && (
@@ -136,144 +167,73 @@ export default function HerbFormPage() {
         className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-5"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Name (English)
-            </label>
+          <Field label="Name (English)" value={english} onChange={setEnglish} />
+          <Field label="Name (Hindi)" value={hindi} onChange={setHindi} />
+          <Field label="Name (Punjabi)" value={punjabi} onChange={setPunjabi} />
+          <Field
+            label="Botanical Name"
+            value={botanicalName}
+            onChange={setBotanicalName}
+            placeholder="e.g. Withania somnifera"
+          />
+        </div>
+
+        <Field label="Common Name" value={commonName} onChange={setCommonName} />
+        <Area label="Description" value={description} onChange={setDescription} />
+        <Area label="Benefits" value={benefits} onChange={setBenefits} />
+        <Area label="Uses" value={uses} onChange={setUses} />
+        <Area label="Parts Used" value={partsUsed} onChange={setPartsUsed} />
+        <Area label="Preparation" value={preparation} onChange={setPreparation} />
+        <Area label="Dosage" value={dosage} onChange={setDosage} />
+        <Area
+          label="Contraindications"
+          value={contraindications}
+          onChange={setContraindications}
+        />
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Disease categories
+          </label>
+          <p className="text-xs text-gray-500 mb-3">
+            Select every disease this herb is used for. One herb can have more than one category.
+          </p>
+
+          {categories.length === 0 ? (
+            <p className="text-sm text-gray-400 mb-3">No categories yet. Add one below.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+              {categories.map((cat) => (
+                <label
+                  key={cat.id}
+                  className="flex items-center gap-2 text-sm text-gray-700 border border-gray-200 rounded-lg px-3 py-2 cursor-pointer hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(cat.id)}
+                    onChange={() => toggleCategory(cat.id)}
+                  />
+                  {cat.name}
+                </label>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-2">
             <input
-              name="nameEn"
-              value={form.nameEn}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              placeholder="New category, e.g. Digestion"
+              className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Name (Hindi)
-            </label>
-            <input
-              name="nameHi"
-              value={form.nameHi}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Name (Punjabi)
-            </label>
-            <input
-              name="namePa"
-              value={form.namePa}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Botanical Name
-            </label>
-            <input
-              name="botanicalName"
-              value={form.botanicalName}
-              onChange={handleChange}
-              placeholder="e.g. Withania somnifera"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Common Name
-            </label>
-            <input
-              name="commonName"
-              value={form.commonName}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Benefits
-            </label>
-            <textarea
-              name="benefits"
-              value={form.benefits}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Uses
-            </label>
-            <textarea
-              name="uses"
-              value={form.uses}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Parts Used
-            </label>
-            <input
-              name="partsUsed"
-              value={form.partsUsed}
-              onChange={handleChange}
-              placeholder="e.g. Root, Leaf"
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Dosage
-            </label>
-            <input
-              name="dosage"
-              value={form.dosage}
-              onChange={handleChange}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Preparation
-            </label>
-            <textarea
-              name="preparation"
-              value={form.preparation}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Contraindications
-            </label>
-            <textarea
-              name="contraindications"
-              value={form.contraindications}
-              onChange={handleChange}
-              rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
-            />
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              disabled={addingCategory || !newCategory.trim()}
+              className="px-4 py-2.5 border border-sarbloh-green text-sarbloh-green text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              {addingCategory ? 'Adding...' : 'Add category'}
+            </button>
           </div>
         </div>
 
@@ -281,19 +241,65 @@ export default function HerbFormPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2.5 bg-sarbloh-red text-white text-sm font-medium rounded-lg hover:bg-sarbloh-red-dark transition-colors disabled:opacity-60"
+            className="px-5 py-2.5 bg-sarbloh-red text-white text-sm font-medium rounded-lg disabled:opacity-60"
           >
-            {saving ? 'Saving...' : isEdit ? 'Update Herb' : 'Add Herb'}
+            {saving ? 'Saving...' : isEdit ? 'Update Herb' : 'Save Herb'}
           </button>
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => navigate('/herbs')}
+            className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg"
           >
             Cancel
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
+      />
+    </div>
+  );
+}
+
+function Area({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sarbloh-green"
+      />
     </div>
   );
 }

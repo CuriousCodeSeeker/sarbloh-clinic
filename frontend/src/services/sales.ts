@@ -34,6 +34,7 @@ export interface Sale {
     fullName: string;
   };
   items: SaleItem[];
+  saleType?: 'PRODUCT' | 'CONSULTANCY';
 }
 
 export interface CreateSaleData {
@@ -57,6 +58,17 @@ export async function getSales(params?: {
 }) {
   const response = await api.get('/sales', { params });
   return response.data;
+}
+
+export async function createConsultancy(data: {
+  patientId?: string;
+  fee: number;
+  paidAmount?: number;
+  paymentMethod?: string;
+  notes?: string;
+}) {
+  const response = await api.post('/sales/consultancy', data);
+  return response.data.data as Sale;
 }
 
 export async function recordPayment(

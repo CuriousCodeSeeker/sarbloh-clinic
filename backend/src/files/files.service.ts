@@ -19,6 +19,40 @@ const ALLOWED_MIME = [
 export class FilesService {
   constructor(private prisma: PrismaService) {}
 
+  private assertAllowed(file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+    if (!ALLOWED_MIME.includes(file.mimetype)) {
+      throw new BadRequestException('Only PDF, JPEG and PNG are allowed');
+    }
+  }
+
+  private async createAttachment(
+    entityType: AttachmentEntityType,
+    entityId: string,
+    file: Express.Multer.File,
+    userId?: string,
+  ) {
+    this.assertAllowed(file);
+
+    return this.prisma.attachment.create({
+      data: {
+        entityType,
+        entityId,
+        fileName: file.filename,
+        originalName: file.originalname,
+        mimeType: file.mimetype,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        storagePath: file.path,
+        uploadedById: userId || null,
+      },
+    });
+  }
+
+  // ---- Patient reports ----
+
   async uploadPatientReport(
     patientId: string,
     file: Express.Multer.File,
@@ -31,27 +65,12 @@ export class FilesService {
       throw new NotFoundException('Patient not found');
     }
 
-    if (!file) {
-      throw new BadRequestException('No file uploaded');
-    }
-
-    if (!ALLOWED_MIME.includes(file.mimetype)) {
-      throw new BadRequestException('Only PDF, JPEG and PNG are allowed');
-    }
-
-    return this.prisma.attachment.create({
-      data: {
-        entityType: AttachmentEntityType.PATIENT,
-        entityId: patientId,
-        fileName: file.filename,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        fileType: file.mimetype,
-        fileSize: file.size,
-        storagePath: file.path,
-        uploadedById: userId || null,
-      },
-    });
+    return this.createAttachment(
+      AttachmentEntityType.PATIENT,
+      patientId,
+      file,
+      userId,
+    );
   }
 
   async listPatientReports(patientId: string) {
@@ -73,6 +92,57 @@ export class FilesService {
     });
   }
 
+  async deletePatientReport(id: string) {
+    return this.deleteById(id, AttachmentEntityType.PATIENT);
+  }
+
+  // ---- Herb files ----
+
+  async uploadHerbFile(
+    herbId: string,
+    file: Express.Multer.File,
+    userId?: string,
+  ) {
+    const herb = await this.prisma.herb.findFirst({
+      where: { id: herbId, isActive: true },
+    });
+    if (!herb) {
+      throw new NotFoundException('Herb not found');
+    }
+
+    return this.createAttachment(
+      AttachmentEntityType.HERB,
+      herbId,
+      file,
+      userId,
+    );
+  }
+
+  async listHerbFiles(herbId: string) {
+    return this.prisma.attachment.findMany({
+      where: {
+        entityType: AttachmentEntityType.HERB,
+        entityId: herbId,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        fileName: true,
+        originalName: true,
+        mimeType: true,
+        fileType: true,
+        fileSize: true,
+        createdAt: true,
+      },
+    });
+  }
+
+  async deleteHerbFile(id: string) {
+    return this.deleteById(id, AttachmentEntityType.HERB);
+  }
+
+  // ---- Shared ----
+
   async getFile(id: string) {
     const attachment = await this.prisma.attachment.findUnique({
       where: { id },
@@ -89,7 +159,7 @@ export class FilesService {
     return { attachment, fullPath };
   }
 
-  async deletePatientReport(id: string) {
+  private async deleteById(id: string, expectedType: AttachmentEntityType) {
     const attachment = await this.prisma.attachment.findUnique({
       where: { id },
     });
@@ -97,8 +167,8 @@ export class FilesService {
       throw new NotFoundException('File not found');
     }
 
-    if (attachment.entityType !== AttachmentEntityType.PATIENT) {
-      throw new BadRequestException('Not a patient report');
+    if (attachment.entityType !== expectedType) {
+      throw new BadRequestException('Invalid attachment type');
     }
 
     try {
@@ -106,7 +176,7 @@ export class FilesService {
         fs.unlinkSync(attachment.storagePath);
       }
     } catch {
-      // ignore disk errors; still remove DB record
+      // ignore disk errors
     }
 
     await this.prisma.attachment.delete({ where: { id } });

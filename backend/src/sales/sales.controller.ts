@@ -12,6 +12,7 @@ import { SalesService } from './sales.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RecordPaymentDto } from './dto/record-payment.dto';
+import { CreateConsultancyDto } from './dto/create-consultancy.dto';
 
 @Controller('api/v1/sales')
 @UseGuards(JwtAuthGuard)
@@ -42,6 +43,15 @@ async recordPayment(@Param('id') id: string, @Body() dto: RecordPaymentDto) {
       search,
     });
     return { success: true, ...result };
+  }
+
+    @Post('consultancy')
+  async createConsultancy(
+    @Body() dto: CreateConsultancyDto,
+    @Request() req: any,
+  ) {
+    const data = await this.salesService.createConsultancy(dto, req.user?.id);
+    return { success: true, data };
   }
 
   @Get(':id')

@@ -56,18 +56,27 @@ export default function SalesListPage() {
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Sales</h1>
-          <p className="text-sm text-gray-500 mt-1">Billing and invoices</p>
-        </div>
-        <button
-          onClick={() => navigate('/sales/new')}
-          className="px-4 py-2.5 bg-sarbloh-red text-white text-sm font-medium rounded-lg hover:bg-sarbloh-red-dark transition-colors"
-        >
-          + New Sale
-        </button>
-      </div>
-
+  <div>
+    <h1 className="text-2xl font-semibold text-gray-900">Sales</h1>
+    <p className="text-sm text-gray-500 mt-1">Product sales and consultancy invoices</p>
+  </div>
+  <div className="flex items-center gap-2">
+    <button
+      type="button"
+      onClick={() => navigate('/sales/consultancy/new')}
+      className="px-4 py-2.5 border border-sarbloh-green text-sarbloh-green text-sm font-medium rounded-lg hover:bg-green-50"
+    >
+      Consultancy Invoice
+    </button>
+    <button
+      type="button"
+      onClick={() => navigate('/sales/new')}
+      className="px-4 py-2.5 bg-sarbloh-red text-white text-sm font-medium rounded-lg hover:bg-sarbloh-red-dark"
+    >
+      + New Sale
+    </button>
+  </div>
+</div>
       <form onSubmit={handleSearch} className="mb-6">
         <div className="flex gap-3">
           <input

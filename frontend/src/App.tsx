@@ -26,6 +26,7 @@ import SettingsPage from './pages/settings/SettingsPage';
 import PrintPrescriptionPage from './pages/print/PrintPrescriptionPage';
 import PrintInvoicePage from './pages/print/PrintInvoicePage';
 import MainLayout from './layouts/MainLayout';
+import CreateConsultancyPage from './pages/sales/CreateConsultancyPage';
 
 function PublicOnly({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -96,6 +97,11 @@ export default function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="/sales/consultancy/new" element={<CreateConsultancyPage />} />
+                <Route path="/sales" element={<SalesListPage />} />
+                <Route path="/sales/new" element={<CreateSalePage />} />
+                <Route path="/sales/consultancy/new" element={<CreateConsultancyPage />} />
+                <Route path="/sales/:id" element={<SaleDetailPage />} />
               </Routes>
             </MainLayout>
           </ProtectedRoute>

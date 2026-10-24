@@ -85,6 +85,11 @@ enum AttachmentEntityType {
   OTHER
 }
 
+enum SaleType {
+  PRODUCT
+  CONSULTANCY
+}
+
 // ============================================================
 // AUTH & USERS
 // ============================================================
@@ -461,6 +466,8 @@ model Sale {
   createdById   String?        @map("created_by_id")
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
+
+    saleType  SaleType  @default(PRODUCT) @map("sale_type")
 
   patient   Patient?   @relation(fields: [patientId], references: [id])
   createdBy User?      @relation("SaleCreatedBy", fields: [createdById], references: [id])

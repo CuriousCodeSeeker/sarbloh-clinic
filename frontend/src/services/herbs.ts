@@ -17,8 +17,10 @@ export interface Herb {
   preparation?: string;
   dosage?: string;
   contraindications?: string;
-  names?: HerbName[];
-  createdAt?: string;
+  names?: { languageCode: string; name: string }[];
+  diseaseCategories?: {
+    diseaseCategory: { id: string; name: string };
+  }[];
 }
 
 export interface CreateHerbData {

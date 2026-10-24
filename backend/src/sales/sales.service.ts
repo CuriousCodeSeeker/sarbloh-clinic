@@ -11,6 +11,7 @@ import {
   PaymentStatus,
   SaleStatus,
 } from '@prisma/client';
+import { CreateConsultancyDto } from './dto/create-consultancy.dto';
 
 @Injectable()
 export class SalesService {
@@ -214,6 +215,74 @@ export class SalesService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+    async createConsultancy(dto: CreateConsultancyDto, userId?: string) {
+    if (dto.fee < 0) {
+      throw new BadRequestException('Fee cannot be negative');
+    }
+
+    if (dto.patientId) {
+      const patient = await this.prisma.patient.findFirst({
+        where: { id: dto.patientId, deletedAt: null },
+      });
+      if (!patient) {
+        throw new NotFoundException('Patient not found');
+      }
+    }
+
+    const total = dto.fee;
+    const paidAmount = dto.paidAmount || 0;
+    const dueAmount = Math.max(total - paidAmount, 0);
+
+    let paymentStatus: PaymentStatus = PaymentStatus.PENDING;
+    if (paidAmount >= total && total > 0) {
+      paymentStatus = PaymentStatus.PAID;
+    } else if (paidAmount > 0) {
+      paymentStatus = PaymentStatus.PARTIAL;
+    }
+
+    const invoiceNumber = await this.generateInvoiceNumber();
+
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.sale.create({
+        data: {
+          invoiceNumber,
+          patientId: dto.patientId || null,
+          saleType: 'CONSULTANCY' as any,
+          subtotal: total,
+          discount: 0,
+          tax: 0,
+          total,
+          paidAmount,
+          dueAmount,
+          paymentStatus,
+          paymentMethod: dto.paymentMethod || null,
+          status: SaleStatus.COMPLETED,
+          notes: dto.notes || 'Consultancy fee',
+          createdById: userId || null,
+        },
+        include: {
+          patient: {
+            select: { id: true, patientCode: true, fullName: true },
+          },
+          items: true,
+          payments: true,
+        },
+      });
+
+      if (paidAmount > 0 && dto.paymentMethod) {
+        await tx.payment.create({
+          data: {
+            saleId: created.id,
+            amount: paidAmount,
+            method: dto.paymentMethod,
+          },
+        });
+      }
+
+      return created;
+    });
   }
 
   async findOne(id: string) {
